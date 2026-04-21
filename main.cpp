@@ -46,37 +46,37 @@ void line (int ax, int ay, int bx, int by, TGAImage& image, TGAColor color)
     }
 }
 
+// Shoelace formula
+double signed_triangle_area (int ax, int ay, int bx, int by, int cx, int cy)
+{
+    return 0.5 * ((by * ax - ay * bx) + (cy * bx - by * cx) + (ay * cx - cy * ax));
+}
+
 void triangle(int ax, int ay, int bx, int by, int cx, int cy, TGAImage &framebuffer, TGAColor color) 
 {
     line(ax, ay, bx, by, framebuffer, color);
     line(bx, by, cx, cy, framebuffer, color);
     line(cx, cy, ax, ay, framebuffer, color);
 
-    // Sort the vertices int x direction:
-    if (ax > bx) { std::swap(ax, bx); std::swap(ay, by); }
-    if (ax > cx) { std::swap(ax, cx); std::swap(ay, cy); }
-    if (bx > cx) { std::swap(bx, cx); std::swap(by, cy); }
+    // Calculate the bouding box:
+    int boundMinX = std::min(std::min(ax, bx), cx);
+    int boundMinY = std::min(std::min(ay, by), cy);
+    int boundMaxX = std::max(std::max(ax, bx), cx);
+    int boundMaxY = std::max(std::max(ay, by), cy);
 
-    // Step from left to right:
-    float ac_slope = (cy - ay) / (float)(cx - ax);
-    float ab_slope = (by - ay) / (float)(bx - ax);
-    float bc_slope = (cy - by) / (float)(cx - bx);
+    double total_area = signed_triangle_area(ax, ay, bx, by, cx, cy);
 
-    for (int x = ax + 1; x < cx; x++)
-    {
-        if (x <= bx)
+    // Iterate each point in AABB and judging if it's in triangle:
+    for (int x = boundMinX; x <= boundMaxX; x++)
+        for (int y = boundMinY; y <= boundMaxY; y++)
         {
-            int ab_y = std::floor(ab_slope * (x - ax) + ay);
-            int ac_y = std::floor(ac_slope * (x - ax) + ay);
-            line(x, ab_y, x, ac_y, framebuffer, color);
+            double alpha = signed_triangle_area(x, y, bx, by, cx, cy) / total_area;
+            double beta = signed_triangle_area(x, y, cx, cy, ax, ay) / total_area;
+            double gamma = signed_triangle_area(x, y, ax, ay, bx, by) / total_area;
+            if (alpha < 0 || beta < 0 || gamma < 0)
+                continue;
+            framebuffer.set(x, y, color);
         }
-        else
-        {
-            int bc_y = std::floor(bc_slope * (x - bx) + by);
-            int ac_y = std::floor(ac_slope * (x - ax) + ay);
-            line(x, bc_y, x, ac_y, framebuffer, color);
-        }
-    }
 }
 
 int main (int argc, char** argv) 
